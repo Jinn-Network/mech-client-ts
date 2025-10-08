@@ -1,0 +1,33 @@
+# Source files (already compiled to dist/)
+src/
+__tests__/
+
+# Development configs
+tsconfig.json
+tsconfig.publish.json
+jest.config.js
+.yarnrc.yml
+
+# Development artifacts
+*.tgz
+result.json
+jinn-workspace.code-workspace
+cli_backup.ts
+
+# IDE and system files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Dependencies (users will install their own)
+node_modules/
+yarn.lock
+
+# Yarn
+.yarn/
+.pnp.*
