@@ -1,0 +1,79 @@
+{
+  "name": "@jinn-network/mech-client-ts",
+  "version": "0.0.1",
+  "description": "TypeScript client for Autonolas AI Mechs - Full feature parity with mech-client-python using async delivery monitoring",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./dist/*": "./dist/*"
+  },
+  "bin": {
+    "mechx": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "yarn tsc && cp -r src/abis dist/ && cp -r src/configs dist/",
+    "dev": "yarn ts-node src/index.ts",
+    "start": "yarn node dist/index.js",
+    "test": "jest -c jest.config.js"
+  },
+  "keywords": [
+    "mech",
+    "autonolas",
+    "ai-mech",
+    "blockchain",
+    "ethereum",
+    "typescript",
+    "jinn-network"
+  ],
+  "author": "Jinn Network",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jinn-Network/mech-client-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Jinn-Network/mech-client-ts/issues"
+  },
+  "homepage": "https://github.com/Jinn-Network/mech-client-ts#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "MIGRATION.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@types/form-data": "^2.2.1",
+    "@types/uuid": "^10.0.0",
+    "axios": "^1.0.0",
+    "bs58": "^6.0.0",
+    "cids": "^1.1.9",
+    "commander": "^14.0.0",
+    "ethers": "^6.0.0",
+    "form-data": "^4.0.4",
+    "graphql": "^16.11.0",
+    "graphql-request": "^7.2.0",
+    "ipfs-http-client": "^60.0.1",
+    "multibase": "^4.0.6",
+    "multicodec": "^3.2.1",
+    "multiformats": "^13.4.0",
+    "uuid": "^13.0.0",
+    "web3": "^4.0.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "jest": "^29.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.9.2"
+  },
+  "resolutions": {
+    "nanoid": "^5.0.9",
+    "parse-duration": "^2.1.3"
+  }
+}
