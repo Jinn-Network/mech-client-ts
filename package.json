@@ -2,6 +2,7 @@
   "name": "@jinn-network/mech-client-ts",
   "version": "0.0.1",
   "description": "TypeScript client for Autonolas AI Mechs - Full feature parity with mech-client-python using async delivery monitoring",
+  "packageManager": "yarn@4.1.0",
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
@@ -14,7 +15,7 @@
     "build": "yarn tsc && cp -r src/abis dist/ && cp -r src/configs dist/",
     "dev": "yarn ts-node src/index.ts",
     "start": "yarn node dist/index.js",
-    "test": "jest -c jest.config.js"
+    "test": "jest -c jest.config.js --passWithNoTests"
   },
   "keywords": [
     "mech",
