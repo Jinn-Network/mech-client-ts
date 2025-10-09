@@ -27,8 +27,12 @@ describe('TypeScript MEC client E2E', () => {
       throw new Error('Missing key files (ethereum_private_key.txt or mech_private_key.txt)');
     }
 
-    const priorityMech = '0xab15f8d064b59447bd8e9e89dd3fa770abf5eeb7';
-    const safeAddress = '0x0ca9F2a6b6b4d8459f887C04f2D7de5442662392';
+    // Test configuration from environment variables
+    const priorityMech = process.env.TEST_PRIORITY_MECH;
+    const safeAddress = process.env.TEST_SAFE_ADDRESS;
+    if (!priorityMech || !safeAddress) {
+      throw new Error('TEST_PRIORITY_MECH and TEST_SAFE_ADDRESS environment variables are required');
+    }
 
     // Request (post-only)
     const reqOut = run([
