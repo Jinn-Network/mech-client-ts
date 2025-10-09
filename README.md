@@ -7,6 +7,17 @@ TypeScript client for [Autonolas AI Mechs](https://github.com/valory-xyz/mech) w
 
 Part of the [Jinn Network](https://github.com/Jinn-Network) ecosystem.
 
+## ⚠️ AI-Generated Code Notice
+
+This project was primarily generated using AI assistance. While functional, users should be aware:
+
+- **Code Review Recommended**: Thoroughly review and test all functionality before using in production
+- **Active Development**: The codebase may contain patterns or implementations that need refinement
+- **Community Contributions Welcome**: We encourage experienced developers to review, improve, and contribute to the codebase
+- **Use at Your Own Risk**: Test extensively in your specific use case before deployment
+
+We welcome issues, pull requests, and feedback to improve code quality and reliability.
+
 ## Features
 
 - ✅ **Full Python Parity** - v0.0.1+ matches mech-client-python functionality
