@@ -11,7 +11,7 @@ import { join } from 'path';
 // Constants
 const MAX_RETRIES = 3;
 const WAIT_SLEEP = 3.0;
-const TIMEOUT = 300.0;
+const TIMEOUT = 900.0; // Aligned with delivery.ts DEFAULT_TIMEOUT (15 minutes)
 const IPFS_URL_TEMPLATE = 'https://gateway.autonolas.tech/ipfs/f01701220{}';
 const MECH_OFFCHAIN_REQUEST_ENDPOINT = 'send_signed_requests';
 const MECH_OFFCHAIN_DELIVER_ENDPOINT = 'fetch_offchain_info';
@@ -791,6 +791,9 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
     );
 
     // Process and display data for each request
+    const results: any[] = [];
+    let hasData = false;
+
     for (let i = 0; i < requestIds.length; i++) {
       const requestId = requestIds[i];
       const requestIdInt = requestIdInts[i];
@@ -799,6 +802,7 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
       const dataUrl = dataUrls[normalizedRequestId];
 
       if (dataUrl) {
+        hasData = true;
         if (isNvmMech) {
           const requesterTotalBalanceAfter = await fetchRequesterNvmSubscriptionBalance(
             account.address,
@@ -815,15 +819,19 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
           const data = response.data;
           console.log('  - Data from agent:');
           console.log(JSON.stringify(data, null, 2));
+          results.push({ requestId: requestIdInt, data });
         } catch (error) {
           console.error('Error fetching data:', error);
+          results.push({ requestId: requestIdInt, error: String(error) });
         }
       } else {
         console.log(`  - No data received for request ${requestIdInt}`);
+        results.push({ requestId: requestIdInt, data: null });
       }
     }
 
-    return null;
+    // Return the results if we have any data, otherwise return null
+    return hasData ? results : null;
   }
 
   // Offchain flow

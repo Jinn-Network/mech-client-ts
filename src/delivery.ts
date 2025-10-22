@@ -70,6 +70,13 @@ export async function watchForMarketplaceData(
   const timeoutMs = (timeout ?? DEFAULT_TIMEOUT) * 1000;
 
   while (true) {
+    // Check timeout at the start of each iteration
+    const elapsedTime = Date.now() - startTime;
+    if (elapsedTime >= timeoutMs) {
+      console.log('Timeout reached. Returning collected data.');
+      return requestIdsData;
+    }
+
     for (const requestId of requestIds) {
       // Convert request ID to bytes32 format (add 0x prefix if missing)
       const requestIdHex = requestId.startsWith('0x') ? requestId : `0x${requestId}`;
@@ -80,16 +87,16 @@ export async function watchForMarketplaceData(
           .mapRequestIdInfos(requestIdHex)
           .call();
 
-        // Return empty data if response is malformed
+        // Skip to next iteration if response is malformed (don't return early)
         if (!Array.isArray(requestIdInfo) || requestIdInfo.length <= DELIVERY_MECH_INDEX) {
-          return requestIdsData;
+          continue;
         }
 
         const deliveryMech = String(requestIdInfo[DELIVERY_MECH_INDEX]);
 
-        // Validate delivery mech format
+        // Skip to next iteration if delivery mech format is invalid (don't return early)
         if (!deliveryMech || !deliveryMech.startsWith('0x')) {
-          return requestIdsData;
+          continue;
         }
 
         // If delivery mech is assigned (not ADDRESS_ZERO), record it
@@ -98,16 +105,8 @@ export async function watchForMarketplaceData(
         }
       } catch (error) {
         console.error(`Error fetching marketplace data for request ${requestId}:`, error);
-      }
-
-      // Sleep between polling iterations
-      await sleep(WAIT_SLEEP);
-
-      // Check timeout
-      const elapsedTime = Date.now() - startTime;
-      if (elapsedTime >= timeoutMs) {
-        console.log('Timeout reached. Returning collected data.');
-        return requestIdsData;
+        // Continue to next iteration on error instead of returning
+        continue;
       }
     }
 
@@ -115,6 +114,9 @@ export async function watchForMarketplaceData(
     if (Object.keys(requestIdsData).length === requestIds.length) {
       return requestIdsData;
     }
+
+    // Sleep between polling iterations
+    await sleep(WAIT_SLEEP);
   }
 }
 
