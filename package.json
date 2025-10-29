@@ -1,6 +1,6 @@
 {
   "name": "@jinn-network/mech-client-ts",
-  "version": "0.0.3",
+  "version": "0.0.2",
   "description": "TypeScript client for Autonolas AI Mechs - Full feature parity with mech-client-python using async delivery monitoring",
   "packageManager": "yarn@4.1.0",
   "main": "dist/index.js",

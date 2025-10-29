@@ -80,6 +80,72 @@ console.log('Request ID:', result.requestIds[0]);
 
 See [MIGRATION.md](MIGRATION.md) for detailed usage examples and migration guide.
 
+## Private Key Management
+
+- **Security Warning**: Never persist private keys inside your workspace or repository. Use one of the secure KeyConfig options below.
+- **No Auto-Writes**: The client no longer writes `MECH_PRIVATE_KEY` values to `ethereum_private_key.txt`.
+- **Operate Integration**: Keys stored in OLAS `.operate` directories are supported out of the box.
+
+### KeyConfig Interface
+
+```typescript
+interface KeyConfig {
+  source: 'value' | 'file' | 'env' | 'operate';
+  value?: string;
+  filePath?: string;
+  envVar?: string;
+  operateDir?: string;
+}
+```
+
+### Usage Examples
+
+```typescript
+import { deliverViaSafe, marketplaceInteract, KeyConfig } from '@jinn-network/mech-client-ts';
+
+// Recommended: resolve keys from the OLAS Operate home
+const operateKey: KeyConfig = { source: 'operate' };
+
+await deliverViaSafe({
+  chainConfig: 'base',
+  requestId: '0x123',
+  resultContent: {},
+  targetMechAddress: '0xabc',
+  safeAddress: '0xdef',
+  keyConfig: operateKey,
+});
+
+// Environment variable
+const envKey: KeyConfig = { source: 'env', envVar: 'MECH_PRIVATE_KEY' };
+
+await marketplaceInteract({
+  prompts: ['tell me a joke'],
+  priorityMech: '0xabc',
+  chainConfig: 'base',
+  keyConfig: envKey,
+});
+
+// Explicit file (store outside the workspace)
+const fileKey: KeyConfig = { source: 'file', filePath: '/secure/keys/mech.txt' };
+```
+
+### Backward Compatibility
+
+- `privateKey` and `privateKeyPath` options still work.
+- `MECH_PRIVATE_KEY` continues to be detected automatically.
+- Legacy helpers (`getPrivateKey`, `getPrivateKeyPath`, `checkPrivateKeyFile`) remain but are deprecated.
+
+### .operate Directory Layout
+
+```
+~/.operate/services/
+└── sc-<service-id>/
+    ├── keys.json   # [{"ledger":"ethereum","address":"0x...","private_key":"0x..."}]
+    └── config.json
+```
+
+Set `OPERATE_HOME` to override the default `~/.operate` location.
+
 ## What's Different from mech-client-python?
 
 This TypeScript client achieves full feature parity with the Python client:

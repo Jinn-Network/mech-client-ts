@@ -152,3 +152,4 @@ Icon?
 .AppleDouble
 .LSOverride
 ._*
+test-*.ts

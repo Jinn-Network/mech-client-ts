@@ -1,6 +1,6 @@
 import { Web3 } from 'web3';
 import { Contract } from 'web3-eth-contract';
-import { get_mech_config, getPrivateKeyPath, checkPrivateKeyFile } from './config';
+import { get_mech_config, resolvePrivateKey, KeyConfig } from './config';
 import { pushMetadataToIpfs, fetchIpfsHash, pushJsonToIpfs } from './ipfs';
 import { watchForMarketplaceRequestIds } from './wss';
 import { watchForMarketplaceData, watchForMechDataUrl } from './delivery';
@@ -76,6 +76,7 @@ export interface MarketplaceInteractOptions {
   ipfsJsonContents?: Record<string, any>[];
   extraAttributes?: Record<string, any>;
   privateKeyPath?: string;
+  keyConfig?: KeyConfig;
   retries?: number;
   timeout?: number;
   sleep?: number;
@@ -575,6 +576,7 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
     tools = [],
     extraAttributes,
     privateKeyPath,
+    keyConfig,
     retries,
     timeout,
     sleep,
@@ -605,15 +607,13 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
   configValues.priorityMechAddress = priorityMechAddress;
   configValues.mechMarketplaceContract = mechMarketplaceContractAddress;
 
-  // Check private key file
-  const keyPath = getPrivateKeyPath(privateKeyPath);
-  checkPrivateKeyFile(keyPath);
-
   // Initialize Web3
   const web3 = new Web3(mechConfig.rpc_url);
 
   // Load private key and add account
-  const privateKey = readFileSync(keyPath, 'utf8').trim();
+  const privateKey = keyConfig
+    ? resolvePrivateKey(keyConfig)
+    : resolvePrivateKey(undefined, privateKeyPath);
   const account = web3.eth.accounts.privateKeyToAccount(privateKey);
   web3.eth.accounts.wallet.add(account);
 
