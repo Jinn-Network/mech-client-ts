@@ -1,5 +1,6 @@
-import { readFileSync, existsSync, writeFileSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 
 // Constants
 export const PRIVATE_KEY_FILE_PATH = 'ethereum_private_key.txt';
@@ -52,6 +53,31 @@ export enum ConfirmationType {
   ON_CHAIN = 'on-chain',
   OFF_CHAIN = 'off-chain',
   WAIT_FOR_BOTH = 'wait-for-both',
+}
+
+/**
+ * Configuration for resolving private keys from different sources.
+ *
+ * This interface provides explicit control over where private keys are loaded from,
+ * eliminating the need for implicit file-writing operations that could expose keys
+ * within the workspace.
+ *
+ * @example
+ * ```ts
+ * const keyConfig: KeyConfig = { source: 'env', envVar: 'MY_PRIVATE_KEY' };
+ * ```
+ *
+ * @example
+ * ```ts
+ * const keyConfig: KeyConfig = { source: 'operate', operateDir: '/secure/.operate' };
+ * ```
+ */
+export interface KeyConfig {
+  source: 'value' | 'file' | 'env' | 'operate';
+  value?: string;
+  filePath?: string;
+  envVar?: string;
+  operateDir?: string;
 }
 
 // Configuration classes with environment overrides
@@ -193,51 +219,139 @@ export function get_mech_config(chain_config?: string): MechConfigImpl {
   return mech_config;
 }
 
-// Utility function to get private key from environment variable or file
+/**
+ * @deprecated Use resolvePrivateKey() instead. Maintained for backward compatibility.
+ */
 export function getPrivateKey(customPath?: string): string {
-  // First try environment variable
-  const envPrivateKey = process.env.MECH_PRIVATE_KEY;
-  if (envPrivateKey) {
-    return envPrivateKey.trim();
-  }
-  
-  // Fall back to file if no environment variable
-  const keyPath = customPath || PRIVATE_KEY_FILE_PATH;
-  checkPrivateKeyFile(keyPath);
-  return readFileSync(keyPath, 'utf8').trim();
+  return resolvePrivateKey(undefined, customPath);
 }
 
-// Utility function to get private key path (for backward compatibility)
+/**
+ * @deprecated Use resolvePrivateKey() instead.
+ */
 export function getPrivateKeyPath(customPath?: string): string {
-  // If a custom path is provided, prefer it
-  if (customPath) return customPath;
-
-  // If MECH_PRIVATE_KEY is set, ensure a local file exists populated with it
-  const envPrivateKey = process.env.MECH_PRIVATE_KEY;
-  if (envPrivateKey && envPrivateKey.trim().length > 0) {
-    try {
-      // Write or overwrite the default file path so downstream code can keep reading from a file
-      writeFileSync(PRIVATE_KEY_FILE_PATH, envPrivateKey.trim(), { encoding: 'utf8' });
-    } catch (_) {
-      // Best-effort; if write fails, downstream check may still throw
-    }
-  }
-  return PRIVATE_KEY_FILE_PATH;
+  return customPath || PRIVATE_KEY_FILE_PATH;
 }
 
-// Utility function to check if private key file exists
+/**
+ * @deprecated Use resolvePrivateKey() instead.
+ */
 export function checkPrivateKeyFile(privateKeyPath: string): void {
-  // If MECH_PRIVATE_KEY is present, auto-create the file to keep legacy flows working
-  const envPrivateKey = process.env.MECH_PRIVATE_KEY;
-  if (envPrivateKey && envPrivateKey.trim().length > 0) {
-    try {
-      writeFileSync(privateKeyPath, envPrivateKey.trim(), { encoding: 'utf8' });
-      return;
-    } catch (_) {
-      // If writing fails, fall through to exists check
-    }
-  }
   if (!existsSync(privateKeyPath)) {
     throw new Error(`Private key file '${privateKeyPath}' does not exist!`);
   }
+}
+
+/**
+ * Resolve a private key from an Operate services directory.
+ */
+function resolveOperateKey(operateDir?: string): string {
+  const baseDir = operateDir || process.env.OPERATE_HOME || join(homedir(), '.operate');
+
+  if (!existsSync(baseDir)) {
+    throw new Error(`Operate directory not found: ${baseDir}`);
+  }
+
+  const servicesDir = join(baseDir, 'services');
+  if (!existsSync(servicesDir)) {
+    throw new Error(`Services directory not found in ${baseDir}`);
+  }
+
+  const serviceDirs = readdirSync(servicesDir).filter((entry) => {
+    if (!entry.startsWith('sc-')) {
+      return false;
+    }
+
+    try {
+      return statSync(join(servicesDir, entry)).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+
+  if (serviceDirs.length === 0) {
+    throw new Error('No service directories found in .operate');
+  }
+
+  const keysPath = join(servicesDir, serviceDirs[0], 'keys.json');
+
+  if (!existsSync(keysPath)) {
+    throw new Error(`keys.json not found at ${keysPath}`);
+  }
+
+  let parsedKeys: unknown;
+  try {
+    parsedKeys = JSON.parse(readFileSync(keysPath, 'utf8'));
+  } catch (error) {
+    throw new Error(`Failed to parse keys.json at ${keysPath}: ${error}`);
+  }
+
+  if (!Array.isArray(parsedKeys) || parsedKeys.length === 0) {
+    throw new Error('keys.json is empty or not an array');
+  }
+
+  const firstEthereumKey = parsedKeys.find((entry) =>
+    entry && typeof entry === 'object' && (entry as any).ledger === 'ethereum' && (entry as any).private_key
+  ) as { private_key: string } | undefined;
+
+  if (!firstEthereumKey?.private_key) {
+    throw new Error('No ethereum key found in keys.json');
+  }
+
+  return firstEthereumKey.private_key.trim();
+}
+
+/**
+ * Resolve a private key using explicit configuration or legacy fallbacks.
+ */
+export function resolvePrivateKey(keyConfig?: KeyConfig, legacyPrivateKeyPath?: string): string {
+  if (keyConfig) {
+    switch (keyConfig.source) {
+      case 'value': {
+        if (!keyConfig.value?.trim()) {
+          throw new Error('KeyConfig source set to value but no value provided');
+        }
+        return keyConfig.value.trim();
+      }
+      case 'file': {
+        const filePath = keyConfig.filePath || PRIVATE_KEY_FILE_PATH;
+        if (!existsSync(filePath)) {
+          throw new Error(`Private key file not found at ${filePath}`);
+        }
+        return readFileSync(filePath, 'utf8').trim();
+      }
+      case 'env': {
+        const envVar = keyConfig.envVar || 'MECH_PRIVATE_KEY';
+        const envValue = process.env[envVar];
+        if (!envValue?.trim()) {
+          throw new Error(`Environment variable ${envVar} not set or empty`);
+        }
+        return envValue.trim();
+      }
+      case 'operate':
+        return resolveOperateKey(keyConfig.operateDir);
+      default:
+        throw new Error(`Unsupported KeyConfig source ${(keyConfig as any).source}`);
+    }
+  }
+
+  const filePath = legacyPrivateKeyPath || PRIVATE_KEY_FILE_PATH;
+  if (existsSync(filePath)) {
+    return readFileSync(filePath, 'utf8').trim();
+  }
+
+  const envKey = process.env.MECH_PRIVATE_KEY;
+  if (envKey?.trim()) {
+    return envKey.trim();
+  }
+
+  try {
+    return resolveOperateKey();
+  } catch {
+    // fall through
+  }
+
+  throw new Error(
+    'No private key found. Provide a KeyConfig, set MECH_PRIVATE_KEY, supply a key file, or configure an .operate directory.'
+  );
 }

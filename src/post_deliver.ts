@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import axios from 'axios';
 import bs58 from 'bs58';
-import { get_mech_config, getPrivateKey } from './config';
+import { get_mech_config, resolvePrivateKey, KeyConfig } from './config';
 
 // Constants
 const REGISTRY_ADD_URL = 'https://registry.autonolas.tech/api/v0/add';
@@ -22,6 +22,7 @@ export interface DeliverViaSafeOptions {
   safeAddress: string;
   privateKeyPath?: string;
   privateKey?: string;
+  keyConfig?: KeyConfig;
   rpcHttpUrl?: string;
   wait?: boolean;
 }
@@ -300,6 +301,7 @@ export async function deliverViaSafe(options: DeliverViaSafeOptions): Promise<De
     safeAddress,
     privateKeyPath,
     privateKey,
+    keyConfig,
     rpcHttpUrl,
     wait = true
   } = options;
@@ -361,12 +363,11 @@ export async function deliverViaSafe(options: DeliverViaSafeOptions): Promise<De
   ).call());
 
   // Sign with EOA private key (eth_sign semantics)
-  let pk: string;
-  if (privateKey) {
-    pk = privateKey.trim();
-  } else {
-    pk = getPrivateKey(privateKeyPath);
-  }
+  const pk = keyConfig
+    ? resolvePrivateKey(keyConfig)
+    : privateKey && privateKey.trim()
+      ? privateKey.trim()
+      : resolvePrivateKey(undefined, privateKeyPath);
 
   const account = web3.eth.accounts.privateKeyToAccount(pk);
   const checksumSender = web3.utils.toChecksumAddress(account.address);

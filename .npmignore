@@ -1,6 +1,7 @@
 # Source files (already compiled to dist/)
 src/
 __tests__/
+test-*.ts
 
 # Development configs
 tsconfig.json

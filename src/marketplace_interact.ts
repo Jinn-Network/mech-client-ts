@@ -1,6 +1,6 @@
 import { Web3 } from 'web3';
 import { Contract } from 'web3-eth-contract';
-import { get_mech_config, getPrivateKeyPath, checkPrivateKeyFile } from './config';
+import { get_mech_config, resolvePrivateKey, KeyConfig } from './config';
 import { pushMetadataToIpfs, fetchIpfsHash, pushJsonToIpfs } from './ipfs';
 import { watchForMarketplaceRequestIds } from './wss';
 import { watchForMarketplaceData, watchForMechDataUrl } from './delivery';
@@ -11,7 +11,7 @@ import { join } from 'path';
 // Constants
 const MAX_RETRIES = 3;
 const WAIT_SLEEP = 3.0;
-const TIMEOUT = 300.0;
+const TIMEOUT = 900.0; // Aligned with delivery.ts DEFAULT_TIMEOUT (15 minutes)
 const IPFS_URL_TEMPLATE = 'https://gateway.autonolas.tech/ipfs/f01701220{}';
 const MECH_OFFCHAIN_REQUEST_ENDPOINT = 'send_signed_requests';
 const MECH_OFFCHAIN_DELIVER_ENDPOINT = 'fetch_offchain_info';
@@ -76,6 +76,7 @@ export interface MarketplaceInteractOptions {
   ipfsJsonContents?: Record<string, any>[];
   extraAttributes?: Record<string, any>;
   privateKeyPath?: string;
+  keyConfig?: KeyConfig;
   retries?: number;
   timeout?: number;
   sleep?: number;
@@ -575,6 +576,7 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
     tools = [],
     extraAttributes,
     privateKeyPath,
+    keyConfig,
     retries,
     timeout,
     sleep,
@@ -605,15 +607,13 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
   configValues.priorityMechAddress = priorityMechAddress;
   configValues.mechMarketplaceContract = mechMarketplaceContractAddress;
 
-  // Check private key file
-  const keyPath = getPrivateKeyPath(privateKeyPath);
-  checkPrivateKeyFile(keyPath);
-
   // Initialize Web3
   const web3 = new Web3(mechConfig.rpc_url);
 
   // Load private key and add account
-  const privateKey = readFileSync(keyPath, 'utf8').trim();
+  const privateKey = keyConfig
+    ? resolvePrivateKey(keyConfig)
+    : resolvePrivateKey(undefined, privateKeyPath);
   const account = web3.eth.accounts.privateKeyToAccount(privateKey);
   web3.eth.accounts.wallet.add(account);
 
@@ -791,6 +791,9 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
     );
 
     // Process and display data for each request
+    const results: any[] = [];
+    let hasData = false;
+
     for (let i = 0; i < requestIds.length; i++) {
       const requestId = requestIds[i];
       const requestIdInt = requestIdInts[i];
@@ -799,6 +802,7 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
       const dataUrl = dataUrls[normalizedRequestId];
 
       if (dataUrl) {
+        hasData = true;
         if (isNvmMech) {
           const requesterTotalBalanceAfter = await fetchRequesterNvmSubscriptionBalance(
             account.address,
@@ -815,15 +819,19 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
           const data = response.data;
           console.log('  - Data from agent:');
           console.log(JSON.stringify(data, null, 2));
+          results.push({ requestId: requestIdInt, data });
         } catch (error) {
           console.error('Error fetching data:', error);
+          results.push({ requestId: requestIdInt, error: String(error) });
         }
       } else {
         console.log(`  - No data received for request ${requestIdInt}`);
+        results.push({ requestId: requestIdInt, data: null });
       }
     }
 
-    return null;
+    // Return the results if we have any data, otherwise return null
+    return hasData ? results : null;
   }
 
   // Offchain flow
