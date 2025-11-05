@@ -200,15 +200,10 @@ export async function watchForMechDataUrl(
       // Decode using web3's ABI decoder
       const decoded = web3.eth.abi.decodeParameters(dataTypes, log.data);
 
-      // Extract request ID from first indexed topic (topic[1])
-      // topic[0] is event signature, topic[1] is indexed requestId
-      let requestIdHex = '';
-      if (log.topics && log.topics.length > 1) {
-        requestIdHex = log.topics[1];
-      } else if (decoded[0]) {
-        // Fallback: use decoded requestId if topics unavailable
-        requestIdHex = String(decoded[0]);
-      }
+      // Extract request ID from decoded data (first parameter in data)
+      // The Deliver event has mech and mechServiceMultisig as indexed params (in topics)
+      // and requestId, deliveryRate, data as non-indexed params (in data)
+      const requestIdHex = String(decoded[0]);
 
       // Remove 0x prefix for consistency with request IDs
       const requestId = requestIdHex.startsWith('0x')
