@@ -2,7 +2,7 @@ import { Web3 } from 'web3';
 import { Contract } from 'web3-eth-contract';
 import { get_mech_config, resolvePrivateKey, KeyConfig } from './config';
 import { pushMetadataToIpfs, fetchIpfsHash, pushJsonToIpfs } from './ipfs';
-import { watchForMarketplaceRequestIds } from './wss';
+import { watchForMarketplaceRequestIds, waitForReceipt } from './wss';
 import { watchForMarketplaceData, watchForMechDataUrl } from './delivery';
 import { readFileSync } from 'fs';
 import axios from 'axios';
@@ -751,8 +751,8 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
     console.log(`  - Transaction sent: ${transactionUrlFormatted}`);
     console.log('  - Waiting for transaction receipt...');
 
-    // Get transaction receipt to extract block number
-    const txReceipt = await web3.eth.getTransactionReceipt(transactionDigest);
+    // Get transaction receipt to extract block number (with retry loop)
+    const txReceipt = await waitForReceipt(transactionDigest, web3);
     const fromBlock = Number(txReceipt.blockNumber);
 
     const requestIds = await watchForMarketplaceRequestIds(

@@ -5,6 +5,7 @@ import { join } from 'path';
 import axios from 'axios';
 import bs58 from 'bs58';
 import { get_mech_config, resolvePrivateKey, KeyConfig } from './config';
+import { waitForReceipt } from './wss';
 
 // Constants
 const REGISTRY_ADD_URL = 'https://registry.autonolas.tech/api/v0/add';
@@ -464,7 +465,9 @@ export async function deliverViaSafe(options: DeliverViaSafeOptions): Promise<De
 
   if (wait) {
     console.log('Waiting for transaction receipt...');
-    const receipt = await web3.eth.getTransactionReceipt(txHash!);
+    
+    // Wait for receipt with retry loop (handles pending transactions)
+    const receipt = await waitForReceipt(txHash!, web3);
     
     if (receipt && receipt.status) {
       result.status = 'confirmed';
@@ -493,6 +496,7 @@ export async function deliverViaSafe(options: DeliverViaSafeOptions): Promise<De
       console.log(`Block Number: ${result.block_number}`);
       console.log(`Gas Used: ${result.gas_used}`);
     } else {
+      // This should never happen since waitForReceipt loops until success
       result.status = 'unknown';
       const txUrl = mechConfig.transaction_url.replace('{transaction_digest}', txHash);
       console.log(`Transaction: ${txUrl}`);
