@@ -405,7 +405,7 @@ export async function deliverViaSafe(options: DeliverViaSafeOptions): Promise<De
   };
 
   // Nonce, gas, fees
-  txPayload.nonce = await web3.eth.getTransactionCount(checksumSender);
+  txPayload.nonce = await web3.eth.getTransactionCount(checksumSender, 'pending');
 
   // Estimate gas
   const gasEstimate = await web3.eth.estimateGas(txPayload);
