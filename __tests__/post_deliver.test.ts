@@ -8,18 +8,31 @@ import axios from 'axios';
 jest.mock('web3');
 jest.mock('axios');
 jest.mock('fs', () => ({
-  readFileSync: jest.fn().mockReturnValue('{"abi": []}'),
+  readFileSync: jest.fn().mockReturnValue(JSON.stringify({
+    abi: [
+      { type: 'function', name: 'deliverToMarketplace' },
+      { type: 'function', name: 'nonce' },
+      { type: 'function', name: 'getTransactionHash' },
+      { type: 'function', name: 'execTransaction' },
+    ]
+  })),
   existsSync: jest.fn().mockReturnValue(true),
 }));
 jest.mock('path', () => ({
-  join: (...args: string[]) => args.join('/'),
+  join: function() { return Array.prototype.slice.call(arguments).join('/'); },
+}));
+jest.mock('../src/config', () => ({
+  get_mech_config: jest.fn().mockReturnValue({
+    rpc_url: 'http://localhost:8545',
+    transaction_url: 'https://basescan.org/tx/{transaction_digest}',
+  }),
+  resolvePrivateKey: jest.fn().mockReturnValue('0xPrivateKey'),
 }));
 
 describe('deliverViaSafe', () => {
   let web3Mock: MockProxy<any>;
   let ethMock: MockProxy<any>;
   let contractMock: MockProxy<any>;
-  let methodMock: MockProxy<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -28,7 +41,6 @@ describe('deliverViaSafe', () => {
     web3Mock = mock<any>();
     ethMock = mock<any>();
     contractMock = mock<any>();
-    methodMock = mock<any>();
 
     (Web3 as unknown as jest.Mock).mockImplementation(() => web3Mock);
     web3Mock.eth = ethMock;
@@ -57,7 +69,7 @@ describe('deliverViaSafe', () => {
         baseFeePerGas: 1000000000n
     });
     ethMock.getMaxPriorityFeePerGas.mockResolvedValue(1500000000n);
-    ethMock.getTransactionCount.mockResolvedValue(10n); // Default return
+    ethMock.getTransactionCount.mockResolvedValue(10n);
     ethMock.estimateGas.mockResolvedValue(21000n);
     ethMock.sendSignedTransaction.mockResolvedValue({
       transactionHash: '0xtxhash',
