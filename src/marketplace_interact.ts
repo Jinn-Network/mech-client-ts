@@ -82,6 +82,7 @@ export interface MarketplaceInteractOptions {
   sleep?: number;
   postOnly?: boolean;
   chainConfig?: string;
+  responseTimeout?: number;
 }
 
 export interface MechInfo {
@@ -581,7 +582,8 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
     timeout,
     sleep,
     postOnly = false,
-    chainConfig
+    chainConfig,
+    responseTimeout
   } = options;
 
   // Get configuration
@@ -606,6 +608,9 @@ export async function marketplaceInteract(options: MarketplaceInteractOptions): 
 
   configValues.priorityMechAddress = priorityMechAddress;
   configValues.mechMarketplaceContract = mechMarketplaceContractAddress;
+  if (responseTimeout !== undefined) {
+    configValues.responseTimeout = responseTimeout;
+  }
 
   // Initialize Web3
   const web3 = new Web3(mechConfig.rpc_url);
